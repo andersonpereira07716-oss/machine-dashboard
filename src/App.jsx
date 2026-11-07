@@ -22,8 +22,11 @@ export default function MachineDashboard() {
   const [newName, setNewName] = useState('');
   const [newSSN, setNewSSN] = useState('');
   const [newStatus, setNewStatus] = useState('Ameaça');
+  const [commandInput, setCommandInput] = useState('');
+  const [isConnected, setIsConnected] = useState(true);
+  
   const [logs, setLogs] = useState([
-    { id: 'l1', source_type: 'OMNI-OPS-AI', content: 'Arquitetura de inteligência preditiva e geoespacial ativa.', created_at: new Date().toLocaleTimeString() }
+    { id: 'l1', source_type: 'OMNI-OPS-AI', content: 'Módulos táticos expandidos carregados com sucesso.', created_at: new Date().toLocaleTimeString() }
   ]);
 
   useEffect(() => {
@@ -70,7 +73,10 @@ export default function MachineDashboard() {
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'targets' }, (payload) => {
         setTargets(prev => [payload.new, ...prev]);
       })
-      .subscribe();
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') setIsConnected(true);
+        else setIsConnected(false);
+      });
 
     return () => { supabase.removeChannel(channel); };
   }, [session]);
@@ -96,16 +102,42 @@ export default function MachineDashboard() {
       status: newStatus,
       threat_level: newStatus === 'Ameaça' ? 88 : 10,
       location: `LAT: -7.0${Math.floor(Math.random()*900)} | LONG: -37.2${Math.floor(Math.random()*900)}`,
-      ai_analysis: 'Padrão comportamental detetado em zona de alta densidade.',
-      suggested_action: newStatus === 'Ameaça' ? 'Protocolo de Contenção Preventiva' : 'Vigilância Passiva'
+      ai_analysis: 'Padrão detetado via injeção manual de operador.',
+      suggested_action: newStatus === 'Ameaça' ? 'Contenção Ativa' : 'Monitoramento Passivo'
     }]);
     setNewName('');
     setNewSSN('');
   };
 
   const handleTriggerAlert = () => {
-    alert(`[ALERTA TÁTICO] Ação acionada para o alvo: ${currentSelected?.full_name}`);
+    alert(`[ALERTA TÁTICO] Protocolo executado para o alvo: ${currentSelected?.full_name}`);
   };
+
+  const handleCommandSubmit = (e) => {
+    e.preventDefault();
+    if (!commandInput.trim()) return;
+    const cmd = commandInput.trim().toLowerCase();
+    
+    let responseText = `Comando executado: ${cmd}`;
+    if (cmd === '/scan') responseText = 'Varredura de espectro completo concluída. Nenhuma anomalia crítica externa.';
+    else if (cmd === '/lock') responseText = `Alvo ${currentSelected?.full_name || 'N/A'} travado no sistema de mira geoespacial.`;
+    else if (cmd === '/purge') responseText = 'Buffer de telemetria otimizado.';
+
+    setLogs(prev => [{
+      id: Math.random().toString(),
+      source_type: 'TERMINAL',
+      content: responseText,
+      created_at: new Date().toLocaleTimeString()
+    }, ...prev]);
+
+    setCommandInput('');
+  };
+
+  const filteredTargets = targets.filter(t => {
+    if (filter === 'AMEAÇAS') return t.status === 'Ameaça';
+    if (filter === 'ALIADOS') return t.status === 'Aliado';
+    return true;
+  });
 
   const styles = {
     container: { backgroundColor: '#07090d', color: '#ffb703', fontFamily: 'monospace', padding: '12px', minHeight: '100vh', boxSizing: 'border-box' },
@@ -113,6 +145,11 @@ export default function MachineDashboard() {
     card: { backgroundColor: '#0e1117', border: '1px solid rgba(255, 183, 3, 0.3)', padding: '12px', borderRadius: '6px', marginBottom: '14px' },
     input: { backgroundColor: '#040507', border: '1px solid rgba(255, 183, 3, 0.4)', color: '#ffb703', padding: '10px', borderRadius: '4px', fontSize: '12px', width: '100%', boxSizing: 'border-box', marginBottom: '8px' },
     btn: { backgroundColor: '#ffb703', color: '#07090d', border: 'none', padding: '10px', borderRadius: '4px', fontWeight: 'bold', fontSize: '11px', cursor: 'pointer', width: '100%' },
+    filterBtn: (active) => ({
+      backgroundColor: active ? '#ffb703' : 'transparent',
+      color: active ? '#07090d' : '#ffb703',
+      border: '1px solid #ffb703', padding: '4px 8px', borderRadius: '3px', fontSize: '10px', cursor: 'pointer', fontWeight: 'bold'
+    }),
     targetItem: (isThreat, isSelected) => ({
       padding: '10px', border: isSelected ? '2px solid #ff0055' : '1px solid rgba(255,183,3,0.3)',
       backgroundColor: isSelected ? 'rgba(255,0,85,0.15)' : 'transparent', color: isThreat ? '#ff0055' : '#ffb703',
@@ -139,15 +176,28 @@ export default function MachineDashboard() {
     <div style={styles.container}>
       <header style={styles.header}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h1 style={{ fontSize: '13px', margin: 0, letterSpacing: '1px' }}>THE MACHINE // OMNI-OPS (RBAC: {userRole.toUpperCase()})</h1>
-          <button onClick={handleLogout} style={{ fontSize: '9px', background: '#ff0055', color: '#fff', border: 'none', padding: '4px 8px', borderRadius: '3px', cursor: 'pointer' }}>SAIR</button>
+          <h1 style={{ fontSize: '13px', margin: 0, letterSpacing: '1px' }}>THE MACHINE // OMNI-OPS</h1>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ fontSize: '9px', padding: '2px 6px', borderRadius: '3px', backgroundColor: isConnected ? 'rgba(0,255,100,0.2)' : 'rgba(255,0,0,0.2)', color: isConnected ? '#00ff64' : '#ff0055', border: '1px solid currentColor' }}>
+              {isConnected ? 'ONLINE' : 'SYNC'}
+            </span>
+            <button onClick={handleLogout} style={{ fontSize: '9px', background: '#ff0055', color: '#fff', border: 'none', padding: '4px 8px', borderRadius: '3px', cursor: 'pointer' }}>SAIR</button>
+          </div>
         </div>
+        <div style={{ fontSize: '10px', color: '#8a92a0' }}>NÍVEL DE ACESSO: <span style={{ color: '#00f0ff' }}>{userRole.toUpperCase()}</span></div>
       </header>
 
       <div style={styles.card}>
-        <div style={{ fontSize: '11px', fontWeight: 'bold', marginBottom: '8px' }}>1. SUJEITOS DE INTERESSE</div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+          <div style={{ fontSize: '11px', fontWeight: 'bold' }}>1. SUJEITOS DE INTERESSE</div>
+          <div style={{ display: 'flex', gap: '4px' }}>
+            <button onClick={() => setFilter('TODOS')} style={styles.filterBtn(filter === 'TODOS')}>TODOS</button>
+            <button onClick={() => setFilter('AMEAÇAS')} style={styles.filterBtn(filter === 'AMEAÇAS')}>AMEAÇAS</button>
+            <button onClick={() => setFilter('ALIADOS')} style={styles.filterBtn(filter === 'ALIADOS')}>ALIADOS</button>
+          </div>
+        </div>
         <div style={{ maxHeight: '180px', overflowY: 'auto' }}>
-          {targets.map(t => (
+          {filteredTargets.map(t => (
             <div key={t.id} onClick={() => setSelectedId(t.id)} style={styles.targetItem(t.status === 'Ameaça', selectedId === t.id)}>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold' }}>
                 <span>{sanitizeString(t.full_name)}</span>
@@ -180,11 +230,11 @@ export default function MachineDashboard() {
         <div style={{ fontSize: '11px', fontWeight: 'bold', marginBottom: '8px' }}>3. MAPA GEOESPACIAL & IA PREDITIVA</div>
         <div style={{ padding: '14px', backgroundColor: '#040507', border: '1px dashed rgba(255,183,3,0.3)', borderRadius: '4px', marginBottom: '10px' }}>
           <div style={{ color: currentSelected?.status === 'Ameaça' ? '#ff0055' : '#ffb703', fontWeight: 'bold', fontSize: '12px' }}>
-            ALVO: {currentSelected?.full_name}
+            ALVO: {currentSelected?.full_name || 'Nenhum selecionado'}
           </div>
-          <div style={{ fontSize: '10px', color: '#00f0ff', marginTop: '2px' }}>COORDENADAS: [{currentSelected?.location}]</div>
+          <div style={{ fontSize: '10px', color: '#00f0ff', marginTop: '2px' }}>COORDENADAS: [{currentSelected?.location || 'N/A'}]</div>
           <div style={{ marginTop: '8px', fontSize: '10px', color: '#aaa', borderTop: '1px solid #1a202c', paddingTop: '6px' }}>
-            <div>🤖 **IA PREDITIVA:** {currentSelected?.ai_analysis || 'Analisando padrões...'}</div>
+            <div>🤖 **IA PREDITIVA:** {currentSelected?.ai_analysis || 'Aguardando telemetria...'}</div>
             <div style={{ color: '#ffb703', marginTop: '2px' }}>⚡ **AÇÃO SUGERIDA:** {currentSelected?.suggested_action || 'N/A'}</div>
           </div>
         </div>
@@ -192,7 +242,10 @@ export default function MachineDashboard() {
       </div>
 
       <div style={styles.card}>
-        <div style={{ fontSize: '11px', fontWeight: 'bold', marginBottom: '8px' }}>4. TELEMETRIA E LOGS</div>
+        <div style={{ fontSize: '11px', fontWeight: 'bold', marginBottom: '8px' }}>4. TERMINAL DE COMANDOS & LOGS</div>
+        <form onSubmit={handleCommandSubmit} style={{ marginBottom: '8px' }}>
+          <input type="text" placeholder="Digite comando (/scan, /lock, /purge)..." value={commandInput} onChange={e => setCommandInput(e.target.value)} style={{ ...styles.input, marginBottom: '4px' }} />
+        </form>
         <div style={{ maxHeight: '130px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '6px' }}>
           {logs.map(l => (
             <div key={l.id} style={{ fontSize: '10px', padding: '6px', backgroundColor: '#040507', borderLeft: '2px solid #ffb703' }}>
