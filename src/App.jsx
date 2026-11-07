@@ -30,7 +30,7 @@ export default function MachineDashboard() {
   const [interceptedData, setInterceptedData] = useState(null);
 
   const [logs, setLogs] = useState([
-    { id: 'l1', source_type: 'SIGINT-SYSTEM', content: 'Módulos de Interceção de Sinal e Reconhecimento Ativos.', created_at: new Date().toLocaleTimeString() }
+    { id: 'l1', source_type: 'INTEL-CORE', content: 'Módulos avançados de Dossiê e Overlay de Vídeo integrados.', created_at: new Date().toLocaleTimeString() }
   ]);
 
   const playAudioBeep = () => {
@@ -123,8 +123,8 @@ export default function MachineDashboard() {
       status: newStatus,
       threat_level: newStatus === 'Ameaça' ? 95 : 10,
       location: `LAT: -7.0${Math.floor(Math.random()*900)} | LONG: -37.2${Math.floor(Math.random()*900)}`,
-      ai_analysis: 'Injeção manual no sistema.',
-      suggested_action: 'Monitoramento de Rádio & Celular'
+      ai_analysis: 'Registo manual inserido no sistema tático.',
+      suggested_action: 'Monitoramento Contínuo'
     }]);
     setNewName('');
     setNewSSN('');
@@ -166,21 +166,39 @@ export default function MachineDashboard() {
       ];
       const randomText = transcriptions[Math.floor(Math.random() * transcriptions.length)];
       
-      setInterceptedData({
-        freq: `${freq} MHz`,
-        text: randomText,
-        quality: `${Math.floor(85 + Math.random() * 14)}%`
-      });
+      setInterceptedData({ freq: `${freq} MHz`, text: randomText, quality: `${Math.floor(85 + Math.random() * 14)}%` });
 
       setLogs(prev => [{
         id: Math.random().toString(),
         source_type: 'SIGINT',
-        content: `Sinal interceptado na frequência ${freq} MHz: ${randomText}`,
+        content: `Sinal interceptado em ${freq} MHz: ${randomText}`,
         created_at: new Date().toLocaleTimeString()
       }, ...prev]);
 
       setScanningSignal(false);
     }, 1800);
+  };
+
+  const exportDossier = () => {
+    if (!currentSelected) return;
+    const dossierText = `========================================\n` +
+                        ` THE MACHINE // DOSSIÊ DE INTELIGÊNCIA\n` +
+                        `========================================\n` +
+                        `ALVO: ${currentSelected.full_name}\n` +
+                        `ESTADO: ${currentSelected.status}\n` +
+                        `NÍVEL DE RISCO: ${currentSelected.threat_level}%\n` +
+                        `COORDENADAS: ${currentSelected.location}\n` +
+                        `ANÁLISE IA: ${currentSelected.ai_analysis}\n` +
+                        `AÇÃO SUGERIDA: ${currentSelected.suggested_action}\n` +
+                        `DATA DE EMISSÃO: ${new Date().toLocaleString()}\n` +
+                        `========================================\n`;
+
+    const blob = new Blob([dossierText], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `dossie_${currentSelected.full_name.replace(/\s+/g, '_')}.txt`;
+    a.click();
   };
 
   const handleTriggerAlert = () => {
@@ -194,10 +212,10 @@ export default function MachineDashboard() {
     const cmd = commandInput.trim().toLowerCase();
     
     let responseText = `Comando executado: ${cmd}`;
-    if (cmd === '/scan') responseText = 'Varredura biométrica e de sinal concluída.';
-    else if (cmd === '/lock') responseText = `Alvo ${currentSelected?.full_name || 'N/A'} bloqueado em todos os sensores.`;
-    else if (cmd === '/sigint') responseText = 'Interceção de espetro de rádio RF ativa.';
-    else if (cmd === '/purge') responseText = 'Cache de imagens e telemetria limpo.';
+    if (cmd === '/scan') responseText = 'Varredura multiespectral concluída.';
+    else if (cmd === '/lock') responseText = `Alvo ${currentSelected?.full_name || 'N/A'} travado no sistema de mira.`;
+    else if (cmd === '/dossier') { exportDossier(); responseText = 'Dossiê do alvo gerado e descarregado.'; }
+    else if (cmd === '/purge') responseText = 'Cache limpo.';
 
     setLogs(prev => [{
       id: Math.random().toString(),
@@ -267,7 +285,7 @@ export default function MachineDashboard() {
     <div style={styles.container}>
       <header style={styles.header}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h1 style={{ fontSize: '13px', margin: 0, letterSpacing: '1px' }}>THE MACHINE // OMNI-INTEL</h1>
+          <h1 style={{ fontSize: '13px', margin: 0, letterSpacing: '1px' }}>THE MACHINE // GOV-OPS</h1>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <button onClick={() => setSoundEnabled(!soundEnabled)} style={{ fontSize: '9px', background: soundEnabled ? '#00f0ff' : '#333', color: '#000', border: 'none', padding: '3px 6px', borderRadius: '3px', fontWeight: 'bold', cursor: 'pointer' }}>
               {soundEnabled ? '🔊 SOM' : '🔇 MUTE'}
@@ -293,27 +311,36 @@ export default function MachineDashboard() {
         </div>
       </div>
 
-      {/* RECONHECIMENTO FACIAL */}
+      {/* OVERLAY DE CÂMARA URBANA COM MIRA (NOVO) */}
       <div style={styles.card}>
-        <div style={{ fontSize: '11px', fontWeight: 'bold', marginBottom: '8px' }}>📸 RECONHECIMENTO FACIAL (FORAGIDOS)</div>
-        <button onClick={handleFacialScan} disabled={scanningFace} style={{ ...styles.btn, backgroundColor: '#ff0055', color: '#fff' }}>
-          {scanningFace ? 'ESCANEANDO BIOMETRIA...' : '🔍 VARREDURA FACIAL DE FORAGIDO'}
+        <div style={{ fontSize: '11px', fontWeight: 'bold', marginBottom: '8px' }}>🎥 OVERLAY TÁTICO DE CÂMARA (RTSP SIM)</div>
+        <div style={{ position: 'relative', height: '140px', backgroundColor: '#040507', border: '1px solid #00f0ff', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+          <div style={{ position: 'absolute', top: '6px', left: '8px', fontSize: '9px', color: '#00f0ff' }}>FEED: SETOR NORTE // 30 FPS</div>
+          <div style={{ position: 'absolute', width: '70px', height: '90px', border: '2px dashed #ff0055', borderRadius: '4px', display: 'flex', alignItems: 'flex-start', justifyContent: 'flex-end', padding: '2px' }}>
+            <span style={{ fontSize: '8px', backgroundColor: '#ff0055', color: '#fff', padding: '1px 3px' }}>LOCK</span>
+          </div>
+          <div style={{ fontSize: '10px', color: '#aaa', zIndex: 2, textAlign: 'center', marginTop: '40px' }}>
+            A rastrear alvo ativo em tempo real...
+          </div>
+        </div>
+      </div>
+
+      {/* RECONHECIMENTO FACIAL E SIGINT */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '14px' }}>
+        <button onClick={handleFacialScan} disabled={scanningFace} style={{ ...styles.btn, backgroundColor: '#ff0055', color: '#fff', padding: '8px' }}>
+          {scanningFace ? 'ESCANEANDO...' : '🔍 FACIAL FORAGIDO'}
+        </button>
+        <button onClick={handleSignalScan} disabled={scanningSignal} style={{ ...styles.btn, backgroundColor: '#00f0ff', color: '#07090d', padding: '8px' }}>
+          {scanningSignal ? 'ESCANEANDO...' : '⚡ SIGINT RÁDIO'}
         </button>
       </div>
 
-      {/* SIGINT - INTERCEÇÃO DE SINAL */}
-      <div style={styles.card}>
-        <div style={{ fontSize: '11px', fontWeight: 'bold', marginBottom: '8px' }}>📡 INTERCEÇÃO DE SINAL (SIGINT)</div>
-        <button onClick={handleSignalScan} disabled={scanningSignal} style={{ ...styles.btn, backgroundColor: '#00f0ff', color: '#07090d', marginBottom: '8px' }}>
-          {scanningSignal ? 'VARRENDO FREQUÊNCIAS...' : '⚡ ESCANEAR FREQUÊNCIAS DE RÁDIO/CELULAR'}
-        </button>
-        {interceptedData && (
-          <div style={{ padding: '8px', backgroundColor: '#040507', borderLeft: '2px solid #00f0ff', fontSize: '10px' }}>
-            <div>FREQ: <span style={{ color: '#00f0ff' }}>{interceptedData.freq}</span> | SINAL: {interceptedData.quality}</div>
-            <div style={{ color: '#fff', marginTop: '4px', fontStyle: 'italic' }}>{interceptedData.text}</div>
-          </div>
-        )}
-      </div>
+      {interceptedData && (
+        <div style={{ ...styles.card, padding: '8px', borderLeft: '2px solid #00f0ff', fontSize: '10px', marginBottom: '14px' }}>
+          <div>FREQ: <span style={{ color: '#00f0ff' }}>{interceptedData.freq}</span> | SINAL: {interceptedData.quality}</div>
+          <div style={{ color: '#fff', marginTop: '2px', fontStyle: 'italic' }}>{interceptedData.text}</div>
+        </div>
+      )}
 
       <div style={styles.card}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
@@ -324,7 +351,7 @@ export default function MachineDashboard() {
             <button onClick={() => setFilter('ALIADOS')} style={styles.filterBtn(filter === 'ALIADOS')}>ALIADOS</button>
           </div>
         </div>
-        <div style={{ maxHeight: '160px', overflowY: 'auto' }}>
+        <div style={{ maxHeight: '150px', overflowY: 'auto' }}>
           {filteredTargets.map(t => (
             <div key={t.id} onClick={() => setSelectedId(t.id)} style={styles.targetItem(t.status === 'Ameaça', selectedId === t.id)}>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold' }}>
@@ -349,14 +376,18 @@ export default function MachineDashboard() {
                 <option value="Aliado">Aliado</option>
               </select>
             </div>
-            <button type="submit" style={styles.btn}>+ INSERIR NA BASE BIOMÉTRICA</button>
+            <button type="submit" style={styles.btn}>+ INSERIR NA BASE</button>
           </form>
         </div>
       )}
 
+      {/* MAPA & GERADOR DE DOSSIÊ (NOVO) */}
       <div style={styles.card}>
-        <div style={{ fontSize: '11px', fontWeight: 'bold', marginBottom: '8px' }}>3. MAPA GEOESPACIAL & IA PREDITIVA</div>
-        <div style={{ padding: '14px', backgroundColor: '#040507', border: '1px dashed rgba(255,183,3,0.3)', borderRadius: '4px', marginBottom: '10px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+          <div style={{ fontSize: '11px', fontWeight: 'bold' }}>3. MAPA & DOSSIÊ TÁTICO</div>
+          <button onClick={exportDossier} style={{ fontSize: '9px', background: '#00f0ff', color: '#07090d', border: 'none', padding: '3px 6px', borderRadius: '3px', fontWeight: 'bold', cursor: 'pointer' }}>📄 GERAR DOSSIÊ</button>
+        </div>
+        <div style={{ padding: '12px', backgroundColor: '#040507', border: '1px dashed rgba(255,183,3,0.3)', borderRadius: '4px', marginBottom: '10px' }}>
           <div style={{ color: currentSelected?.status === 'Ameaça' ? '#ff0055' : '#ffb703', fontWeight: 'bold', fontSize: '12px' }}>
             ALVO: {currentSelected?.full_name || 'Nenhum selecionado'}
           </div>
@@ -375,7 +406,7 @@ export default function MachineDashboard() {
           <button onClick={exportLogs} style={{ fontSize: '9px', background: '#ffb703', color: '#07090d', border: 'none', padding: '2px 6px', borderRadius: '3px', fontWeight: 'bold', cursor: 'pointer' }}>💾 EXPORTAR</button>
         </div>
         <form onSubmit={handleCommandSubmit} style={{ marginBottom: '8px' }}>
-          <input type="text" placeholder="Digite comando (/scan, /sigint, /purge)..." value={commandInput} onChange={e => setCommandInput(e.target.value)} style={{ ...styles.input, marginBottom: '4px' }} />
+          <input type="text" placeholder="Comandos (/scan, /lock, /dossier, /purge)..." value={commandInput} onChange={e => setCommandInput(e.target.value)} style={{ ...styles.input, marginBottom: '4px' }} />
         </form>
         <div style={{ maxHeight: '120px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '6px' }}>
           {logs.map(l => (
