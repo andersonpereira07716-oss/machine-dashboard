@@ -1,6 +1,7 @@
 export const dispararAlertaTelegramTatico = async (detalhesAlvo) => {
-  const TOKEN = '9209061704:AAFQVzgb66KVrCLoD38Am1YdwVJNLkuZrfQ';
-  const CHAT_ID = '7370681538';
+  // Lê as variáveis injetadas pela Vercel ou usa os valores padrão de contingência
+  const TOKEN = import.meta.env.VITE_TELEGRAM_TOKEN || '9209061704:AAFQVzgb66KVrCLoD38Am1YdwVJNLkuZrfQ';
+  const CHAT_ID = import.meta.env.VITE_CHAT_ID || '7370681538';
   
   const mensagem = `🚨 **[CENTRAL CAD - PROTOCOLO TÁTICO]** 🚨\n\n` +
                    `🎯 **Alvo:** ${detalhesAlvo || 'Carlos Alberto (Foragido Prisional)'}\n` +
