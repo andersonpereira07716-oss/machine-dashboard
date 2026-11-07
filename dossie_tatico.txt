@@ -1,0 +1,9 @@
+========================================
+     REPÚBLICA - DOSSIÊ TÁTICO DE INTELIGÊNCIA     
+========================================
+Data/Hora: 2026-11-07 10:38:06
+Alvo / Matrícula: Carlos Eduardo Silva
+Nível de Ameaça: CRÍTICO (Nível 5)
+Detalhes Operacionais: Match biométrico confirmado em 94.5% no Terminal Central.
+Estado: REGISTADO E AUDITADO (SUPABASE)
+========================================
