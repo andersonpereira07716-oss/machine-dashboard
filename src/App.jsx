@@ -26,9 +26,11 @@ export default function MachineDashboard() {
   const [isConnected, setIsConnected] = useState(true);
   const [soundEnabled, setSoundEnabled] = useState(false);
   const [scanningFace, setScanningFace] = useState(false);
+  const [scanningSignal, setScanningSignal] = useState(false);
+  const [interceptedData, setInterceptedData] = useState(null);
 
   const [logs, setLogs] = useState([
-    { id: 'l1', source_type: 'BIOMETRIC-AI', content: 'Módulo de Reconhecimento Facial e Foragidos integrado.', created_at: new Date().toLocaleTimeString() }
+    { id: 'l1', source_type: 'SIGINT-SYSTEM', content: 'Módulos de Interceção de Sinal e Reconhecimento Ativos.', created_at: new Date().toLocaleTimeString() }
   ]);
 
   const playAudioBeep = () => {
@@ -121,8 +123,8 @@ export default function MachineDashboard() {
       status: newStatus,
       threat_level: newStatus === 'Ameaça' ? 95 : 10,
       location: `LAT: -7.0${Math.floor(Math.random()*900)} | LONG: -37.2${Math.floor(Math.random()*900)}`,
-      ai_analysis: 'Registo de foragido inserido na base biométrica.',
-      suggested_action: 'Captura Imediata / Alerta Policial'
+      ai_analysis: 'Injeção manual no sistema.',
+      suggested_action: 'Monitoramento de Rádio & Celular'
     }]);
     setNewName('');
     setNewSSN('');
@@ -152,6 +154,35 @@ export default function MachineDashboard() {
     }, 2000);
   };
 
+  const handleSignalScan = () => {
+    setScanningSignal(true);
+    playAudioBeep();
+    setTimeout(() => {
+      const freq = (800 + Math.random() * 100).toFixed(2);
+      const transcriptions = [
+        "\"...mudando para a rota secundária em 5 minutos...\"",
+        "\"...pacote confirmado no ponto de encontro...\"",
+        "\"...desliguem os dispositivos, sinal detetado...\""
+      ];
+      const randomText = transcriptions[Math.floor(Math.random() * transcriptions.length)];
+      
+      setInterceptedData({
+        freq: `${freq} MHz`,
+        text: randomText,
+        quality: `${Math.floor(85 + Math.random() * 14)}%`
+      });
+
+      setLogs(prev => [{
+        id: Math.random().toString(),
+        source_type: 'SIGINT',
+        content: `Sinal interceptado na frequência ${freq} MHz: ${randomText}`,
+        created_at: new Date().toLocaleTimeString()
+      }, ...prev]);
+
+      setScanningSignal(false);
+    }, 1800);
+  };
+
   const handleTriggerAlert = () => {
     playAudioBeep();
     alert(`[ALERTA MÁXIMO] Protocolo de captura acionado para: ${currentSelected?.full_name}`);
@@ -163,9 +194,10 @@ export default function MachineDashboard() {
     const cmd = commandInput.trim().toLowerCase();
     
     let responseText = `Comando executado: ${cmd}`;
-    if (cmd === '/scan') responseText = 'Varredura biométrica facial em massa concluída.';
-    else if (cmd === '/lock') responseText = `Alvo ${currentSelected?.full_name || 'N/A'} travado por reconhecimento facial.`;
-    else if (cmd === '/purge') responseText = 'Cache de imagens limpo.';
+    if (cmd === '/scan') responseText = 'Varredura biométrica e de sinal concluída.';
+    else if (cmd === '/lock') responseText = `Alvo ${currentSelected?.full_name || 'N/A'} bloqueado em todos os sensores.`;
+    else if (cmd === '/sigint') responseText = 'Interceção de espetro de rádio RF ativa.';
+    else if (cmd === '/purge') responseText = 'Cache de imagens e telemetria limpo.';
 
     setLogs(prev => [{
       id: Math.random().toString(),
@@ -183,7 +215,7 @@ export default function MachineDashboard() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `logs_biometria_${Date.now()}.txt`;
+    a.download = `logs_maquina_${Date.now()}.txt`;
     a.click();
   };
 
@@ -235,7 +267,7 @@ export default function MachineDashboard() {
     <div style={styles.container}>
       <header style={styles.header}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h1 style={{ fontSize: '13px', margin: 0, letterSpacing: '1px' }}>THE MACHINE // BIOMETRIC-OPS</h1>
+          <h1 style={{ fontSize: '13px', margin: 0, letterSpacing: '1px' }}>THE MACHINE // OMNI-INTEL</h1>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <button onClick={() => setSoundEnabled(!soundEnabled)} style={{ fontSize: '9px', background: soundEnabled ? '#00f0ff' : '#333', color: '#000', border: 'none', padding: '3px 6px', borderRadius: '3px', fontWeight: 'bold', cursor: 'pointer' }}>
               {soundEnabled ? '🔊 SOM' : '🔇 MUTE'}
@@ -261,15 +293,26 @@ export default function MachineDashboard() {
         </div>
       </div>
 
-      {/* RECONHECIMENTO FACIAL (NOVO MÓDULO) */}
+      {/* RECONHECIMENTO FACIAL */}
       <div style={styles.card}>
         <div style={{ fontSize: '11px', fontWeight: 'bold', marginBottom: '8px' }}>📸 RECONHECIMENTO FACIAL (FORAGIDOS)</div>
-        <div style={{ padding: '12px', backgroundColor: '#040507', border: '1px dashed #ff0055', borderRadius: '4px', textAlign: 'center', marginBottom: '8px' }}>
-          <div style={{ fontSize: '10px', color: '#aaa', marginBottom: '6px' }}>Simular captura de câmara de segurança urbana</div>
-          <button onClick={handleFacialScan} disabled={scanningFace} style={{ ...styles.btn, backgroundColor: '#ff0055', color: '#fff' }}>
-            {scanningFace ? 'ESCANEANDO BIOMETRIA...' : '🔍 VARREDURA FACIAL DE FORAGIDO'}
-          </button>
-        </div>
+        <button onClick={handleFacialScan} disabled={scanningFace} style={{ ...styles.btn, backgroundColor: '#ff0055', color: '#fff' }}>
+          {scanningFace ? 'ESCANEANDO BIOMETRIA...' : '🔍 VARREDURA FACIAL DE FORAGIDO'}
+        </button>
+      </div>
+
+      {/* SIGINT - INTERCEÇÃO DE SINAL */}
+      <div style={styles.card}>
+        <div style={{ fontSize: '11px', fontWeight: 'bold', marginBottom: '8px' }}>📡 INTERCEÇÃO DE SINAL (SIGINT)</div>
+        <button onClick={handleSignalScan} disabled={scanningSignal} style={{ ...styles.btn, backgroundColor: '#00f0ff', color: '#07090d', marginBottom: '8px' }}>
+          {scanningSignal ? 'VARRENDO FREQUÊNCIAS...' : '⚡ ESCANEAR FREQUÊNCIAS DE RÁDIO/CELULAR'}
+        </button>
+        {interceptedData && (
+          <div style={{ padding: '8px', backgroundColor: '#040507', borderLeft: '2px solid #00f0ff', fontSize: '10px' }}>
+            <div>FREQ: <span style={{ color: '#00f0ff' }}>{interceptedData.freq}</span> | SINAL: {interceptedData.quality}</div>
+            <div style={{ color: '#fff', marginTop: '4px', fontStyle: 'italic' }}>{interceptedData.text}</div>
+          </div>
+        )}
       </div>
 
       <div style={styles.card}>
@@ -332,11 +375,11 @@ export default function MachineDashboard() {
           <button onClick={exportLogs} style={{ fontSize: '9px', background: '#ffb703', color: '#07090d', border: 'none', padding: '2px 6px', borderRadius: '3px', fontWeight: 'bold', cursor: 'pointer' }}>💾 EXPORTAR</button>
         </div>
         <form onSubmit={handleCommandSubmit} style={{ marginBottom: '8px' }}>
-          <input type="text" placeholder="Digite comando (/scan, /lock, /purge)..." value={commandInput} onChange={e => setCommandInput(e.target.value)} style={{ ...styles.input, marginBottom: '4px' }} />
+          <input type="text" placeholder="Digite comando (/scan, /sigint, /purge)..." value={commandInput} onChange={e => setCommandInput(e.target.value)} style={{ ...styles.input, marginBottom: '4px' }} />
         </form>
         <div style={{ maxHeight: '120px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '6px' }}>
           {logs.map(l => (
-            <div key={l.id} style={{ fontSize: '10px', padding: '6px', backgroundColor: '#040507', borderLeft: '2px solid #ff0055' }}>
+            <div key={l.id} style={{ fontSize: '10px', padding: '6px', backgroundColor: '#040507', borderLeft: '2px solid #00f0ff' }}>
               <span style={{ color: '#777' }}>[{l.source_type}]</span> {l.content}
             </div>
           ))}
