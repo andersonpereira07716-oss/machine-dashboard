@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { supabase } from './supabaseClient';
 
 const sanitizeString = (str) => {
   if (typeof str !== 'string') return '';
@@ -22,43 +23,33 @@ export default function MachineDashboard() {
   const [newStatus, setNewStatus] = useState('Ameaça');
 
   const [logs, setLogs] = useState([
-    { id: 'l1', source_type: 'SIGINT-CORE', content: 'Varredura espectral ativa em 4.096 nós globais.', created_at: new Date().toLocaleTimeString() },
-    { id: 'l2', source_type: 'MATRIZ-IA', content: 'Análise comportamental preditiva operando em tempo real.', created_at: new Date().toLocaleTimeString() },
+    { id: 'l1', source_type: 'SUPABASE-REALTIME', content: 'Canal WebSocket seguro conectado com sucesso.', created_at: new Date().toLocaleTimeString() },
   ]);
 
   const currentSelected = targets.find(t => t.id === selectedId) || targets[0];
 
-  // 1. Simulação em tempo real: Movimento dinâmico do alvo e novos logs automáticos
   useEffect(() => {
-    const interval = setInterval(() => {
-      // Atualiza coordenadas do alvo selecionado simulando movimento na rua
-      setTargets(prev => prev.map(t => {
-        if (t.id === selectedId) {
-          const latDelta = (Math.random() - 0.5) * 0.001;
-          const lonDelta = (Math.random() - 0.5) * 0.001;
-          const currentLat = parseFloat(t.location.split('|')[0].replace('LAT:', '')) + latDelta;
-          const currentLon = parseFloat(t.location.split('|')[1].replace(' LONG:', '')) + lonDelta;
-          return {
-            ...t,
-            location: `LAT: ${currentLat.toFixed(4)} | LONG: ${currentLon.toFixed(4)}`
+    const channel = supabase
+      .channel('schema-db-changes')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'surveillance_feed' },
+        (payload) => {
+          const newMsg = {
+            id: payload.new.id || Math.random().toString(),
+            source_type: payload.new.source_type || 'SUPABASE-FEED',
+            content: sanitizeString(payload.new.content),
+            created_at: new Date().toLocaleTimeString()
           };
+          setLogs(prev => [newMsg, ...prev.slice(0, 19)]);
         }
-        return t;
-      }));
+      )
+      .subscribe();
 
-      // Adiciona logs automáticos da Máquina
-      const rawText = `Câmera CCTV #${Math.floor(Math.random() * 89) + 10} confirmou rastreio de padrão no setor.`;
-      const newLog = {
-        id: Math.random().toString(),
-        source_type: 'FEED-AO-VIVO',
-        content: sanitizeString(rawText),
-        created_at: new Date().toLocaleTimeString()
-      };
-      setLogs(prev => [newLog, ...prev.slice(0, 19)]);
-    }, 4000);
-
-    return () => clearInterval(interval);
-  }, [selectedId]);
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
   const handleSelectTarget = (target) => {
     setSelectedId(target.id);
@@ -91,14 +82,14 @@ export default function MachineDashboard() {
     setNewSSN('');
     setLogs(prev => [{
       id: Math.random().toString(),
-      source_type: 'NOVO-REGISTRO',
-      content: `A Máquina gerou novo número: ${newEntry.full_name} [${newEntry.status}]`,
+      source_type: 'REGISTRO-LOCAL',
+      content: `Novo alvo processado: ${newEntry.full_name} [${newEntry.status}]`,
       created_at: new Date().toLocaleTimeString()
     }, ...prev.slice(0, 19)]);
   };
 
   const handleTriggerAlert = () => {
-    alert(`[ALERTA DA MÁQUINA] Protocolo de resgate acionado para o alvo: ${currentSelected.full_name}!`);
+    alert(`[ALERTA DA MÁQUINA] Protocolo de emergência ativado para: ${currentSelected.full_name}!`);
   };
 
   const filteredTargets = targets.filter(t => {
@@ -175,16 +166,15 @@ export default function MachineDashboard() {
       <header style={styles.header}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <div style={{ width: '10px', height: '10px', backgroundColor: '#ffb703', borderRadius: '50%', boxShadow: '0 0 10px #ffb703' }} />
-          <h1 style={{ fontSize: '15px', fontWeight: 'bold', margin: 0, letterSpacing: '1.5px' }}>THE MACHINE // LIVE HUD</h1>
+          <h1 style={{ fontSize: '15px', fontWeight: 'bold', margin: 0, letterSpacing: '1.5px' }}>THE MACHINE // SUPABASE CLOUD</h1>
         </div>
         <div style={{ fontSize: '10px', color: '#7a828e', display: 'flex', justifyContent: 'space-between' }}>
-          <div>NÓS: 4,096 ONLINE</div>
-          <div>ALVO EM FOCO: <span style={{ color: currentSelected.status === 'Ameaça' ? '#ff0055' : '#ffb703', fontWeight: 'bold' }}>{currentSelected.full_name}</span></div>
+          <div>CONEXÃO: <span style={{ color: '#00f0ff', fontWeight: 'bold' }}>WEBSOCKETS ATIVO</span></div>
+          <div>FOCO: <span style={{ color: currentSelected.status === 'Ameaça' ? '#ff0055' : '#ffb703', fontWeight: 'bold' }}>{currentSelected.full_name}</span></div>
         </div>
       </header>
 
       <div style={styles.grid}>
-        {/* Bloco 1: Sujeitos */}
         <div style={styles.card}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
             <div style={styles.title}>1. SUJEITOS DE INTERESSE</div>
@@ -218,7 +208,6 @@ export default function MachineDashboard() {
           </div>
         </div>
 
-        {/* Bloco 2: Cadastro */}
         <div style={styles.card}>
           <div style={styles.title}>2. INGESTÃO DE NOVO ALVO</div>
           <form onSubmit={handleAddTarget} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -236,11 +225,10 @@ export default function MachineDashboard() {
           </form>
         </div>
 
-        {/* Bloco 3: Radar HUD Dinâmico */}
         <div style={styles.card}>
-          <div style={styles.title}>3. RECONHECIMENTO ÓPTICO E MATRIZ EM TEMPO REAL</div>
+          <div style={styles.title}>3. RECONHECIMENTO ÓPTICO E MATRIZ</div>
           <div style={{ height: '180px', backgroundColor: '#040507', border: '1px dashed rgba(255, 183, 3, 0.4)', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden' }}>
-            <div style={{ textAlign: 'center', zIndex: 1, padding: '0 10px' }}>
+            <div style={{ textAlign: 'center', zIndex: '1', padding: '0 10px' }}>
               <span style={{ fontSize: '16px', fontWeight: '900', opacity: 0.5, display: 'block', color: currentSelected.status === 'Ameaça' ? '#ff0055' : '#ffb703' }}>
                 ALVO: {sanitizeString(currentSelected.full_name)}
               </span>
@@ -257,9 +245,8 @@ export default function MachineDashboard() {
           </button>
         </div>
 
-        {/* Bloco 4: Logs */}
         <div style={styles.card}>
-          <div style={styles.title}>4. TELEMETRIA E LOGS AO VIVO</div>
+          <div style={styles.title}>4. TELEMETRIA E LOGS EM TEMPO REAL</div>
           <div style={styles.scrollArea}>
             {logs.map((log) => (
               <div key={log.id} style={styles.logItem}>
