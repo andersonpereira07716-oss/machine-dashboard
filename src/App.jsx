@@ -10,24 +10,36 @@ const sanitizeString = (str) => {
 };
 
 export default function MachineDashboard() {
-  const [targets, setTargets] = useState([
-    { id: '1', full_name: 'JOHN REESE', ssn_last_four: '8921', status: 'Aliado', threat_level: 15, location: 'LAT: -7.0172 | LONG: -37.2841' },
-    { id: '2', full_name: 'HAROLD FINCH', ssn_last_four: '4012', status: 'Aliado', threat_level: 5, location: 'LAT: -7.0185 | LONG: -37.2820' },
-    { id: '3', full_name: 'SUJEITO DESCONHECIDO', ssn_last_four: '7734', status: 'Ameaça', threat_level: 92, location: 'LAT: -7.0178 | LONG: -37.2839' },
-  ]);
-
-  const [selectedId, setSelectedId] = useState('3');
+  const [targets, setTargets] = useState([]);
+  const [selectedId, setSelectedId] = useState(null);
   const [filter, setFilter] = useState('TODOS');
   const [newName, setNewName] = useState('');
   const [newSSN, setNewSSN] = useState('');
   const [newStatus, setNewStatus] = useState('Ameaça');
-
   const [logs, setLogs] = useState([
-    { id: 'l1', source_type: 'SUPABASE-REALTIME', content: 'Canal WebSocket seguro conectado com sucesso.', created_at: new Date().toLocaleTimeString() },
+    { id: 'l1', source_type: 'SUPABASE-CLOUD', content: 'Ligação WebSocket estabelecida com a Máquina.', created_at: new Date().toLocaleTimeString() }
   ]);
 
-  const currentSelected = targets.find(t => t.id === selectedId) || targets[0];
+  // 1. Buscar alvos iniciais do Supabase
+  useEffect(() => {
+    async function fetchTargets() {
+      const { data, error } = await supabase.from('targets').select('*').order('created_at', { ascending: false });
+      if (!error && data && data.length > 0) {
+        setTargets(data);
+        setSelectedId(data[0].id);
+      } else {
+        // Alvos padrão caso a tabela esteja vazia
+        setTargets([
+          { id: '1', full_name: 'JOHN REESE', ssn_last_four: '8921', status: 'Aliado', threat_level: 15, location: 'LAT: -7.0172 | LONG: -37.2841' },
+          { id: '2', full_name: 'HAROLD FINCH', ssn_last_four: '4012', status: 'Aliado', threat_level: 5, location: 'LAT: -7.0185 | LONG: -37.2820' }
+        ]);
+        setSelectedId('1');
+      }
+    }
+    fetchTargets();
+  }, []);
 
+  // 2. Subscrever WebSockets em tempo real (Alvos e Logs)
   useEffect(() => {
     const channel = supabase
       .channel('schema-db-changes')
@@ -37,11 +49,18 @@ export default function MachineDashboard() {
         (payload) => {
           const newMsg = {
             id: payload.new.id || Math.random().toString(),
-            source_type: payload.new.source_type || 'SUPABASE-FEED',
+            source_type: payload.new.source_type || 'FEED-EXTERNO',
             content: sanitizeString(payload.new.content),
             created_at: new Date().toLocaleTimeString()
           };
           setLogs(prev => [newMsg, ...prev.slice(0, 19)]);
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'targets' },
+        (payload) => {
+          setTargets(prev => [payload.new, ...prev]);
         }
       )
       .subscribe();
@@ -51,45 +70,36 @@ export default function MachineDashboard() {
     };
   }, []);
 
+  const currentSelected = targets.find(t => t.id === selectedId) || targets[0];
+
   const handleSelectTarget = (target) => {
     setSelectedId(target.id);
   };
 
-  const toggleTargetStatus = (e, targetId) => {
-    e.stopPropagation();
-    setTargets(prev => prev.map(t => {
-      if (t.id === targetId) {
-        const nextStatus = t.status === 'Ameaça' ? 'Aliado' : 'Ameaça';
-        return { ...t, status: nextStatus, threat_level: nextStatus === 'Ameaça' ? 90 : 12 };
-      }
-      return t;
-    }));
-  };
-
-  const handleAddTarget = (e) => {
+  const handleAddTarget = async (e) => {
     e.preventDefault();
     if (!newName.trim()) return;
+
     const newEntry = {
-      id: Math.random().toString(),
       full_name: newName.toUpperCase(),
       ssn_last_four: newSSN || '0000',
       status: newStatus,
       threat_level: newStatus === 'Ameaça' ? 88 : 10,
       location: 'LAT: -7.0190 | LONG: -37.2850'
     };
-    setTargets(prev => [newEntry, ...prev]);
-    setNewName('');
-    setNewSSN('');
-    setLogs(prev => [{
-      id: Math.random().toString(),
-      source_type: 'REGISTRO-LOCAL',
-      content: `Novo alvo processado: ${newEntry.full_name} [${newEntry.status}]`,
-      created_at: new Date().toLocaleTimeString()
-    }, ...prev.slice(0, 19)]);
+
+    // Insere diretamente no Supabase (o Realtime atualizará o painel)
+    const { error } = await supabase.from('targets').insert([newEntry]);
+    if (!error) {
+      setNewName('');
+      setNewSSN('');
+    } else {
+      alert('Erro ao processar alvo na base de dados.');
+    }
   };
 
   const handleTriggerAlert = () => {
-    alert(`[ALERTA DA MÁQUINA] Protocolo de emergência ativado para: ${currentSelected.full_name}!`);
+    alert(`[ALERTA MÁQUINA] Protocolo de emergência disparado para o alvo: ${currentSelected?.full_name}!`);
   };
 
   const filteredTargets = targets.filter(t => {
@@ -121,7 +131,6 @@ export default function MachineDashboard() {
       backgroundColor: isThreat ? 'rgba(255, 0, 85, 0.2)' : 'rgba(255, 183, 3, 0.2)',
       color: isThreat ? '#ff0055' : '#ffb703',
       borderRadius: '3px',
-      cursor: 'pointer',
     }),
     filterBtn: (active) => ({
       padding: '3px 8px',
@@ -166,18 +175,18 @@ export default function MachineDashboard() {
       <header style={styles.header}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <div style={{ width: '10px', height: '10px', backgroundColor: '#ffb703', borderRadius: '50%', boxShadow: '0 0 10px #ffb703' }} />
-          <h1 style={{ fontSize: '15px', fontWeight: 'bold', margin: 0, letterSpacing: '1.5px' }}>THE MACHINE // SUPABASE CLOUD</h1>
+          <h1 style={{ fontSize: '15px', fontWeight: 'bold', margin: 0, letterSpacing: '1.5px' }}>THE MACHINE // CLOUD DATABASE</h1>
         </div>
         <div style={{ fontSize: '10px', color: '#7a828e', display: 'flex', justifyContent: 'space-between' }}>
-          <div>CONEXÃO: <span style={{ color: '#00f0ff', fontWeight: 'bold' }}>WEBSOCKETS ATIVO</span></div>
-          <div>FOCO: <span style={{ color: currentSelected.status === 'Ameaça' ? '#ff0055' : '#ffb703', fontWeight: 'bold' }}>{currentSelected.full_name}</span></div>
+          <div>ESTADO: <span style={{ color: '#00f0ff', fontWeight: 'bold' }}>ONLINE (SUPABASE)</span></div>
+          <div>FOCO: <span style={{ color: currentSelected?.status === 'Ameaça' ? '#ff0055' : '#ffb703', fontWeight: 'bold' }}>{currentSelected?.full_name || 'N/A'}</span></div>
         </div>
       </header>
 
       <div style={styles.grid}>
         <div style={styles.card}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-            <div style={styles.title}>1. SUJEITOS DE INTERESSE</div>
+            <div style={styles.title}>1. SUJEITOS DE INTERESSE (NUVEM)</div>
             <div style={{ display: 'flex', gap: '4px' }}>
               {['TODOS', 'ALIADOS', 'AMEAÇAS'].map(f => (
                 <button key={f} onClick={() => setFilter(f)} style={styles.filterBtn(filter === f)}>
@@ -189,14 +198,12 @@ export default function MachineDashboard() {
           <div style={styles.scrollArea}>
             {filteredTargets.map((target) => {
               const isThreat = target.status === 'Ameaça';
-              const isSelected = currentSelected.id === target.id;
+              const isSelected = currentSelected?.id === target.id;
               return (
                 <div key={target.id} onClick={() => handleSelectTarget(target)} style={styles.targetItem(isThreat, isSelected)}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px', fontWeight: 'bold' }}>
                     <span>{isSelected ? `> ${sanitizeString(target.full_name)}` : sanitizeString(target.full_name)}</span>
-                    <button onClick={(e) => toggleTargetStatus(e, target.id)} style={styles.badge(isThreat)}>
-                      {target.status}
-                    </button>
+                    <span style={styles.badge(isThreat)}>{target.status}</span>
                   </div>
                   <div style={{ fontSize: '11px', color: '#8a92a0', marginTop: '6px', display: 'flex', justifyContent: 'space-between' }}>
                     <span>ID: XXX-XX-{sanitizeString(target.ssn_last_four)}</span>
@@ -209,7 +216,7 @@ export default function MachineDashboard() {
         </div>
 
         <div style={styles.card}>
-          <div style={styles.title}>2. INGESTÃO DE NOVO ALVO</div>
+          <div style={styles.title}>2. INGESTÃO DE NOVO ALVO (SUPABASE)</div>
           <form onSubmit={handleAddTarget} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             <input type="text" placeholder="NOME COMPLETO" value={newName} onChange={(e) => setNewName(e.target.value)} style={styles.input} />
             <div style={{ display: 'flex', gap: '8px' }}>
@@ -220,7 +227,7 @@ export default function MachineDashboard() {
               </select>
             </div>
             <button type="submit" style={{ ...styles.actionBtn, backgroundColor: '#ffb703', color: '#07090d', boxShadow: '0 0 10px rgba(255,183,3,0.3)' }}>
-              + PROCESSAR NOVO ALVO
+              + REGISTRAR NA NUVEM
             </button>
           </form>
         </div>
@@ -228,16 +235,16 @@ export default function MachineDashboard() {
         <div style={styles.card}>
           <div style={styles.title}>3. RECONHECIMENTO ÓPTICO E MATRIZ</div>
           <div style={{ height: '180px', backgroundColor: '#040507', border: '1px dashed rgba(255, 183, 3, 0.4)', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden' }}>
-            <div style={{ textAlign: 'center', zIndex: '1', padding: '0 10px' }}>
-              <span style={{ fontSize: '16px', fontWeight: '900', opacity: 0.5, display: 'block', color: currentSelected.status === 'Ameaça' ? '#ff0055' : '#ffb703' }}>
-                ALVO: {sanitizeString(currentSelected.full_name)}
+            <div style={{ textAlign: 'center', zIndex: 1, padding: '0 10px' }}>
+              <span style={{ fontSize: '16px', fontWeight: '900', opacity: 0.5, display: 'block', color: currentSelected?.status === 'Ameaça' ? '#ff0055' : '#ffb703' }}>
+                ALVO: {sanitizeString(currentSelected?.full_name)}
               </span>
               <span style={{ fontSize: '10px', color: '#00f0ff', fontWeight: 'bold' }}>
-                [ {sanitizeString(currentSelected.location)} ]
+                [ {sanitizeString(currentSelected?.location)} ]
               </span>
             </div>
-            <div style={{ position: 'absolute', width: '80px', height: '80px', border: currentSelected.status === 'Ameaça' ? '1.5px solid rgba(255, 0, 85, 0.8)' : '1.5px solid rgba(255, 183, 3, 0.8)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <div style={{ width: '6px', height: '6px', backgroundColor: currentSelected.status === 'Ameaça' ? '#ff0055' : '#ffb703', borderRadius: '50%', boxShadow: currentSelected.status === 'Ameaça' ? '0 0 10px #ff0055' : '0 0 10px #ffb703' }} />
+            <div style={{ position: 'absolute', width: '80px', height: '80px', border: currentSelected?.status === 'Ameaça' ? '1.5px solid rgba(255, 0, 85, 0.8)' : '1.5px solid rgba(255, 183, 3, 0.8)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <div style={{ width: '6px', height: '6px', backgroundColor: currentSelected?.status === 'Ameaça' ? '#ff0055' : '#ffb703', borderRadius: '50%', boxShadow: currentSelected?.status === 'Ameaça' ? '0 0 10px #ff0055' : '0 0 10px #ffb703' }} />
             </div>
           </div>
           <button onClick={handleTriggerAlert} style={styles.actionBtn}>
