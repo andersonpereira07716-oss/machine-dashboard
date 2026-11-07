@@ -2,10 +2,12 @@ export const dispararAlertaTelegramTatico = async (detalhesAlvo) => {
   const TOKEN = '9209061704:AAFQVzgb66KVrCLoD38Am1YdwVJNLkuZrfQ';
   const CHAT_ID = '7370681538';
   
+  console.log("[*] Função dispararAlertaTelegramTatico acionada!");
+  
   const mensagem = `🚨 **[CENTRAL CAD - PROTOCOLO TÁTICO WEB]** 🚨\n\n` +
                    `🎯 **Alvo:** ${detalhesAlvo || 'Carlos Alberto (Foragido Prisional)'}\n` +
                    `📍 **Localização:** Patos-PB (-7.0142, -37.2910)\n` +
-                   `🔒 **Estado:** Acionado via Botão Tático (Interface Web).\n` +
+                   `🔒 **Estado:** Acionado via Botão Tático (Interface PWA).\n` +
                    `⚡ **Transmissão:** @TheMachineAlertsBot Operacional.`;
 
   try {
@@ -21,14 +23,14 @@ export const dispararAlertaTelegramTatico = async (detalhesAlvo) => {
     
     const resultado = await resposta.json();
     if (resultado.ok) {
-      alert('🚀 Alerta enviado com sucesso para o @TheMachineAlertsBot!');
+      alert('🚀 Alerta enviado com sucesso para o Telegram!');
       return true;
     } else {
-      alert('❌ Erro no Telegram: ' + (resultado.description || 'Falha'));
+      alert('❌ Erro na API do Telegram: ' + (resultado.description || 'Desconhecido'));
       return false;
     }
   } catch (erro) {
-    alert('⚠️ Erro de rede ao contactar o Telegram.');
+    alert('⚠️ Erro de rede ao contactar o Telegram: ' + erro.message);
     return false;
   }
 };
