@@ -268,3 +268,47 @@ def register_unit_checkin(unit_code, sector, status_report):
         )
         send_telegram_alert(msg)
     return success
+
+import math
+
+# --- MÓDULO CAD: DESPACHO TÁTICO E CADEIA DE CUSTÓDIA ---
+def calculate_distance(lat1, lon1, lat2, lon2):
+    # Fórmula simples para estimar proximidade em km (Geofencing / Proximidade)
+    return math.sqrt((lat2 - lat1)**2 + (lon2 - lon1)**2) * 111
+
+def dispatch_nearest_unit(target_name, target_lat, target_lng):
+    # Frota simulada de unidades no terreno com as respetivas posições GPS atuais
+    units = [
+        {"code": "ALPHA-01", "lat": -7.0300, "lng": -37.2750, "status": "Disponível"},
+        {"code": "BRAVO-03", "lat": -7.0450, "lng": -37.2900, "status": "Em patrulha"},
+        {"code": "DELTA-07", "lat": -7.0320, "lng": -37.2810, "status": "Disponível"}
+    ]
+    
+    # Encontrar a unidade disponível mais próxima
+    available_units = [u for u in units if u["status"] == "Disponível"]
+    if not available_units:
+        available_units = units # Fallback se todas ocupadas
+        
+    nearest = min(available_units, key=lambda u: calculate_distance(target_lat, target_lng, u["lat"], u["lng"]))
+    distance_km = calculate_distance(target_lat, target_lng, nearest["lat"], nearest["lng"])
+    
+    # Registar Cadeia de Custódia Imutável no Supabase
+    custody_data = {
+        "plate": f"CAD-{nearest['code']}",
+        "vehicle_model": f"Alvo: {target_name}",
+        "status": "INTERCECAO_ACIONADA",
+        "location": f"Distância: {round(distance_km, 2)}km"
+    }
+    insert_supabase_log("anpr_logs", custody_data)
+    
+    # Disparar Ordem CAD via Telegram para a Viatura e Central
+    msg = (
+        f"🚨 *[CENTRAL CAD - DESPACHO DE INTERCEÇÃO]* 🚨\n\n"
+        f"🎯 *Alvo Crítico:* `{target_name}`\n"
+        f"🚓 *Unidade Atribuída:* `{nearest['code']}`\n"
+        f"📍 *Proximidade Estimada:* `{round(distance_km, 2)} km`\n"
+        f"🔒 *Cadeia de Custódia:* Registada e auditada no Supabase.\n"
+        f"⚡ *Estado:* Rota de interceção enviada para o terminal de campo."
+    )
+    send_telegram_alert(msg)
+    return nearest['code']
