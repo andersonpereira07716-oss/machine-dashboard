@@ -25,9 +25,10 @@ export default function MachineDashboard() {
   const [commandInput, setCommandInput] = useState('');
   const [isConnected, setIsConnected] = useState(true);
   const [soundEnabled, setSoundEnabled] = useState(false);
+  const [scanningFace, setScanningFace] = useState(false);
 
   const [logs, setLogs] = useState([
-    { id: 'l1', source_type: 'OMNI-OPS-AI', content: 'Centro de operações e telemetria avançada ativado.', created_at: new Date().toLocaleTimeString() }
+    { id: 'l1', source_type: 'BIOMETRIC-AI', content: 'Módulo de Reconhecimento Facial e Foragidos integrado.', created_at: new Date().toLocaleTimeString() }
   ]);
 
   const playAudioBeep = () => {
@@ -118,18 +119,42 @@ export default function MachineDashboard() {
       full_name: newName.toUpperCase(),
       ssn_last_four: newSSN || '0000',
       status: newStatus,
-      threat_level: newStatus === 'Ameaça' ? 88 : 10,
+      threat_level: newStatus === 'Ameaça' ? 95 : 10,
       location: `LAT: -7.0${Math.floor(Math.random()*900)} | LONG: -37.2${Math.floor(Math.random()*900)}`,
-      ai_analysis: 'Injeção manual via painel tático.',
-      suggested_action: newStatus === 'Ameaça' ? 'Protocolo de Contenção' : 'Vigilância Passiva'
+      ai_analysis: 'Registo de foragido inserido na base biométrica.',
+      suggested_action: 'Captura Imediata / Alerta Policial'
     }]);
     setNewName('');
     setNewSSN('');
   };
 
+  const handleFacialScan = () => {
+    setScanningFace(true);
+    playAudioBeep();
+    setTimeout(async () => {
+      const foragidosExemplo = [
+        { nome: "CARLOS ALBERTO (FORAGIDO PRISIONAL)", risco: 98, local: "LAT: -7.0142 | LONG: -37.2910" },
+        { nome: "MARCOS V. SANTOS (MANDADO EM ABERTO)", risco: 94, local: "LAT: -7.0210 | LONG: -37.2750" }
+      ];
+      const match = foragidosExemplo[Math.floor(Math.random() * foragidosExemplo.length)];
+
+      await supabase.from('targets').insert([{
+        full_name: match.nome,
+        ssn_last_four: '9999',
+        status: 'Ameaça',
+        threat_level: match.risco,
+        location: match.local,
+        ai_analysis: 'MATCH BIOMÉTRICO POSITIVO: 99.4% de similaridade com base carcerária.',
+        suggested_action: 'Acionar autoridades locais e equipa tática'
+      }]);
+
+      setScanningFace(false);
+    }, 2000);
+  };
+
   const handleTriggerAlert = () => {
     playAudioBeep();
-    alert(`[ALERTA TÁTICO] Protocolo acionado para o alvo: ${currentSelected?.full_name}`);
+    alert(`[ALERTA MÁXIMO] Protocolo de captura acionado para: ${currentSelected?.full_name}`);
   };
 
   const handleCommandSubmit = (e) => {
@@ -138,9 +163,9 @@ export default function MachineDashboard() {
     const cmd = commandInput.trim().toLowerCase();
     
     let responseText = `Comando executado: ${cmd}`;
-    if (cmd === '/scan') responseText = 'Varredura geoespacial ativa. Espectro normal.';
-    else if (cmd === '/lock') responseText = `Alvo ${currentSelected?.full_name || 'N/A'} travado no radar.`;
-    else if (cmd === '/purge') responseText = 'Memória do buffer limpa com sucesso.';
+    if (cmd === '/scan') responseText = 'Varredura biométrica facial em massa concluída.';
+    else if (cmd === '/lock') responseText = `Alvo ${currentSelected?.full_name || 'N/A'} travado por reconhecimento facial.`;
+    else if (cmd === '/purge') responseText = 'Cache de imagens limpo.';
 
     setLogs(prev => [{
       id: Math.random().toString(),
@@ -158,7 +183,7 @@ export default function MachineDashboard() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `logs_maquina_${Date.now()}.txt`;
+    a.download = `logs_biometria_${Date.now()}.txt`;
     a.click();
   };
 
@@ -210,7 +235,7 @@ export default function MachineDashboard() {
     <div style={styles.container}>
       <header style={styles.header}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h1 style={{ fontSize: '13px', margin: 0, letterSpacing: '1px' }}>THE MACHINE // OMNI-OPS</h1>
+          <h1 style={{ fontSize: '13px', margin: 0, letterSpacing: '1px' }}>THE MACHINE // BIOMETRIC-OPS</h1>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <button onClick={() => setSoundEnabled(!soundEnabled)} style={{ fontSize: '9px', background: soundEnabled ? '#00f0ff' : '#333', color: '#000', border: 'none', padding: '3px 6px', borderRadius: '3px', fontWeight: 'bold', cursor: 'pointer' }}>
               {soundEnabled ? '🔊 SOM' : '🔇 MUTE'}
@@ -224,15 +249,26 @@ export default function MachineDashboard() {
         <div style={{ fontSize: '10px', color: '#8a92a0' }}>NÍVEL DE ACESSO: <span style={{ color: '#00f0ff' }}>{userRole.toUpperCase()}</span></div>
       </header>
 
-      {/* MÉTRICAS EM TEMPO REAL */}
+      {/* MÉTRICAS */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '14px' }}>
         <div style={{ backgroundColor: '#0e1117', border: '1px solid rgba(255,0,85,0.4)', padding: '8px', borderRadius: '6px', textAlign: 'center' }}>
-          <div style={{ fontSize: '9px', color: '#aaa' }}>AMEAÇAS ATIVAS</div>
+          <div style={{ fontSize: '9px', color: '#aaa' }}>FORAGIDOS / AMEAÇAS</div>
           <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#ff0055' }}>{totalThreats}</div>
         </div>
         <div style={{ backgroundColor: '#0e1117', border: '1px solid rgba(255,183,3,0.4)', padding: '8px', borderRadius: '6px', textAlign: 'center' }}>
           <div style={{ fontSize: '9px', color: '#aaa' }}>RISCO MÉDIO</div>
           <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#ffb703' }}>{avgThreatLevel}%</div>
+        </div>
+      </div>
+
+      {/* RECONHECIMENTO FACIAL (NOVO MÓDULO) */}
+      <div style={styles.card}>
+        <div style={{ fontSize: '11px', fontWeight: 'bold', marginBottom: '8px' }}>📸 RECONHECIMENTO FACIAL (FORAGIDOS)</div>
+        <div style={{ padding: '12px', backgroundColor: '#040507', border: '1px dashed #ff0055', borderRadius: '4px', textAlign: 'center', marginBottom: '8px' }}>
+          <div style={{ fontSize: '10px', color: '#aaa', marginBottom: '6px' }}>Simular captura de câmara de segurança urbana</div>
+          <button onClick={handleFacialScan} disabled={scanningFace} style={{ ...styles.btn, backgroundColor: '#ff0055', color: '#fff' }}>
+            {scanningFace ? 'ESCANEANDO BIOMETRIA...' : '🔍 VARREDURA FACIAL DE FORAGIDO'}
+          </button>
         </div>
       </div>
 
@@ -245,7 +281,7 @@ export default function MachineDashboard() {
             <button onClick={() => setFilter('ALIADOS')} style={styles.filterBtn(filter === 'ALIADOS')}>ALIADOS</button>
           </div>
         </div>
-        <div style={{ maxHeight: '180px', overflowY: 'auto' }}>
+        <div style={{ maxHeight: '160px', overflowY: 'auto' }}>
           {filteredTargets.map(t => (
             <div key={t.id} onClick={() => setSelectedId(t.id)} style={styles.targetItem(t.status === 'Ameaça', selectedId === t.id)}>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold' }}>
@@ -260,17 +296,17 @@ export default function MachineDashboard() {
 
       {userRole === 'admin' && (
         <div style={styles.card}>
-          <div style={{ fontSize: '11px', fontWeight: 'bold', marginBottom: '8px' }}>2. INGESTÃO DE ALVO (ADMIN)</div>
+          <div style={{ fontSize: '11px', fontWeight: 'bold', marginBottom: '8px' }}>2. CADASTRAR FORAGIDO (ADMIN)</div>
           <form onSubmit={handleAddTarget}>
-            <input type="text" placeholder="NOME COMPLETO" value={newName} onChange={e => setNewName(e.target.value)} style={styles.input} />
+            <input type="text" placeholder="NOME DO FORAGIDO" value={newName} onChange={e => setNewName(e.target.value)} style={styles.input} />
             <div style={{ display: 'flex', gap: '8px' }}>
               <input type="text" placeholder="ID (4 dígitos)" value={newSSN} onChange={e => setNewSSN(e.target.value)} style={styles.input} />
               <select value={newStatus} onChange={e => setNewStatus(e.target.value)} style={styles.input}>
-                <option value="Ameaça">Ameaça</option>
+                <option value="Ameaça">Foragido / Ameaça</option>
                 <option value="Aliado">Aliado</option>
               </select>
             </div>
-            <button type="submit" style={styles.btn}>+ PROCESSAR ALVO</button>
+            <button type="submit" style={styles.btn}>+ INSERIR NA BASE BIOMÉTRICA</button>
           </form>
         </div>
       )}
@@ -283,8 +319,8 @@ export default function MachineDashboard() {
           </div>
           <div style={{ fontSize: '10px', color: '#00f0ff', marginTop: '2px' }}>COORDENADAS: [{currentSelected?.location || 'N/A'}]</div>
           <div style={{ marginTop: '8px', fontSize: '10px', color: '#aaa', borderTop: '1px solid #1a202c', paddingTop: '6px' }}>
-            <div>🤖 **IA PREDITIVA:** {currentSelected?.ai_analysis || 'Aguardando telemetria...'}</div>
-            <div style={{ color: '#ffb703', marginTop: '2px' }}>⚡ **AÇÃO SUGERIDA:** {currentSelected?.suggested_action || 'N/A'}</div>
+            <div>🤖 **ANÁLISE:** {currentSelected?.ai_analysis || 'Aguardando telemetria...'}</div>
+            <div style={{ color: '#ffb703', marginTop: '2px' }}>⚡ **AÇÃO:** {currentSelected?.suggested_action || 'N/A'}</div>
           </div>
         </div>
         <button onClick={handleTriggerAlert} style={{ ...styles.btn, backgroundColor: '#ff0055', color: '#fff' }}>⚠️ EXECUTAR PROTOCOLO TÁTICO</button>
@@ -293,14 +329,14 @@ export default function MachineDashboard() {
       <div style={styles.card}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
           <div style={{ fontSize: '11px', fontWeight: 'bold' }}>4. TERMINAL DE COMANDOS & LOGS</div>
-          <button onClick={exportLogs} style={{ fontSize: '9px', background: '#ffb703', color: '#07090d', border: 'none', padding: '2px 6px', borderRadius: '3px', fontWeight: 'bold', cursor: 'pointer' }}>💾 EXPORTAR LOGS</button>
+          <button onClick={exportLogs} style={{ fontSize: '9px', background: '#ffb703', color: '#07090d', border: 'none', padding: '2px 6px', borderRadius: '3px', fontWeight: 'bold', cursor: 'pointer' }}>💾 EXPORTAR</button>
         </div>
         <form onSubmit={handleCommandSubmit} style={{ marginBottom: '8px' }}>
           <input type="text" placeholder="Digite comando (/scan, /lock, /purge)..." value={commandInput} onChange={e => setCommandInput(e.target.value)} style={{ ...styles.input, marginBottom: '4px' }} />
         </form>
-        <div style={{ maxHeight: '130px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+        <div style={{ maxHeight: '120px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '6px' }}>
           {logs.map(l => (
-            <div key={l.id} style={{ fontSize: '10px', padding: '6px', backgroundColor: '#040507', borderLeft: '2px solid #ffb703' }}>
+            <div key={l.id} style={{ fontSize: '10px', padding: '6px', backgroundColor: '#040507', borderLeft: '2px solid #ff0055' }}>
               <span style={{ color: '#777' }}>[{l.source_type}]</span> {l.content}
             </div>
           ))}
