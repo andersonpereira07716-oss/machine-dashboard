@@ -24,10 +24,27 @@ export default function MachineDashboard() {
   const [newStatus, setNewStatus] = useState('Ameaça');
   const [commandInput, setCommandInput] = useState('');
   const [isConnected, setIsConnected] = useState(true);
-  
+  const [soundEnabled, setSoundEnabled] = useState(false);
+
   const [logs, setLogs] = useState([
-    { id: 'l1', source_type: 'OMNI-OPS-AI', content: 'Módulos táticos expandidos carregados com sucesso.', created_at: new Date().toLocaleTimeString() }
+    { id: 'l1', source_type: 'OMNI-OPS-AI', content: 'Centro de operações e telemetria avançada ativado.', created_at: new Date().toLocaleTimeString() }
   ]);
+
+  const playAudioBeep = () => {
+    if (!soundEnabled) return;
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(880, ctx.currentTime);
+      gain.gain.setValueAtTime(0.05, ctx.currentTime);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.15);
+    } catch (e) {}
+  };
 
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
@@ -63,6 +80,7 @@ export default function MachineDashboard() {
     const channel = supabase
       .channel('schema-db-changes')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'surveillance_feed' }, (payload) => {
+        playAudioBeep();
         setLogs(prev => [{
           id: payload.new.id || Math.random().toString(),
           source_type: payload.new.source_type || 'FEED',
@@ -71,15 +89,15 @@ export default function MachineDashboard() {
         }, ...prev.slice(0, 19)]);
       })
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'targets' }, (payload) => {
+        playAudioBeep();
         setTargets(prev => [payload.new, ...prev]);
       })
       .subscribe((status) => {
-        if (status === 'SUBSCRIBED') setIsConnected(true);
-        else setIsConnected(false);
+        setIsConnected(status === 'SUBSCRIBED');
       });
 
     return () => { supabase.removeChannel(channel); };
-  }, [session]);
+  }, [session, soundEnabled]);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -102,15 +120,16 @@ export default function MachineDashboard() {
       status: newStatus,
       threat_level: newStatus === 'Ameaça' ? 88 : 10,
       location: `LAT: -7.0${Math.floor(Math.random()*900)} | LONG: -37.2${Math.floor(Math.random()*900)}`,
-      ai_analysis: 'Padrão detetado via injeção manual de operador.',
-      suggested_action: newStatus === 'Ameaça' ? 'Contenção Ativa' : 'Monitoramento Passivo'
+      ai_analysis: 'Injeção manual via painel tático.',
+      suggested_action: newStatus === 'Ameaça' ? 'Protocolo de Contenção' : 'Vigilância Passiva'
     }]);
     setNewName('');
     setNewSSN('');
   };
 
   const handleTriggerAlert = () => {
-    alert(`[ALERTA TÁTICO] Protocolo executado para o alvo: ${currentSelected?.full_name}`);
+    playAudioBeep();
+    alert(`[ALERTA TÁTICO] Protocolo acionado para o alvo: ${currentSelected?.full_name}`);
   };
 
   const handleCommandSubmit = (e) => {
@@ -119,9 +138,9 @@ export default function MachineDashboard() {
     const cmd = commandInput.trim().toLowerCase();
     
     let responseText = `Comando executado: ${cmd}`;
-    if (cmd === '/scan') responseText = 'Varredura de espectro completo concluída. Nenhuma anomalia crítica externa.';
-    else if (cmd === '/lock') responseText = `Alvo ${currentSelected?.full_name || 'N/A'} travado no sistema de mira geoespacial.`;
-    else if (cmd === '/purge') responseText = 'Buffer de telemetria otimizado.';
+    if (cmd === '/scan') responseText = 'Varredura geoespacial ativa. Espectro normal.';
+    else if (cmd === '/lock') responseText = `Alvo ${currentSelected?.full_name || 'N/A'} travado no radar.`;
+    else if (cmd === '/purge') responseText = 'Memória do buffer limpa com sucesso.';
 
     setLogs(prev => [{
       id: Math.random().toString(),
@@ -133,11 +152,26 @@ export default function MachineDashboard() {
     setCommandInput('');
   };
 
+  const exportLogs = () => {
+    const textContent = logs.map(l => `[${l.created_at}] [${l.source_type}] ${l.content}`).join('\n');
+    const blob = new Blob([textContent], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `logs_maquina_${Date.now()}.txt`;
+    a.click();
+  };
+
   const filteredTargets = targets.filter(t => {
     if (filter === 'AMEAÇAS') return t.status === 'Ameaça';
     if (filter === 'ALIADOS') return t.status === 'Aliado';
     return true;
   });
+
+  const totalThreats = targets.filter(t => t.status === 'Ameaça').length;
+  const avgThreatLevel = targets.length > 0 
+    ? Math.round(targets.reduce((acc, curr) => acc + (curr.threat_level || 0), 0) / targets.length)
+    : 0;
 
   const styles = {
     container: { backgroundColor: '#07090d', color: '#ffb703', fontFamily: 'monospace', padding: '12px', minHeight: '100vh', boxSizing: 'border-box' },
@@ -177,15 +211,30 @@ export default function MachineDashboard() {
       <header style={styles.header}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <h1 style={{ fontSize: '13px', margin: 0, letterSpacing: '1px' }}>THE MACHINE // OMNI-OPS</h1>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <button onClick={() => setSoundEnabled(!soundEnabled)} style={{ fontSize: '9px', background: soundEnabled ? '#00f0ff' : '#333', color: '#000', border: 'none', padding: '3px 6px', borderRadius: '3px', fontWeight: 'bold', cursor: 'pointer' }}>
+              {soundEnabled ? '🔊 SOM' : '🔇 MUTE'}
+            </button>
             <span style={{ fontSize: '9px', padding: '2px 6px', borderRadius: '3px', backgroundColor: isConnected ? 'rgba(0,255,100,0.2)' : 'rgba(255,0,0,0.2)', color: isConnected ? '#00ff64' : '#ff0055', border: '1px solid currentColor' }}>
               {isConnected ? 'ONLINE' : 'SYNC'}
             </span>
-            <button onClick={handleLogout} style={{ fontSize: '9px', background: '#ff0055', color: '#fff', border: 'none', padding: '4px 8px', borderRadius: '3px', cursor: 'pointer' }}>SAIR</button>
+            <button onClick={handleLogout} style={{ fontSize: '9px', background: '#ff0055', color: '#fff', border: 'none', padding: '3px 6px', borderRadius: '3px', cursor: 'pointer' }}>SAIR</button>
           </div>
         </div>
         <div style={{ fontSize: '10px', color: '#8a92a0' }}>NÍVEL DE ACESSO: <span style={{ color: '#00f0ff' }}>{userRole.toUpperCase()}</span></div>
       </header>
+
+      {/* MÉTRICAS EM TEMPO REAL */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '14px' }}>
+        <div style={{ backgroundColor: '#0e1117', border: '1px solid rgba(255,0,85,0.4)', padding: '8px', borderRadius: '6px', textAlign: 'center' }}>
+          <div style={{ fontSize: '9px', color: '#aaa' }}>AMEAÇAS ATIVAS</div>
+          <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#ff0055' }}>{totalThreats}</div>
+        </div>
+        <div style={{ backgroundColor: '#0e1117', border: '1px solid rgba(255,183,3,0.4)', padding: '8px', borderRadius: '6px', textAlign: 'center' }}>
+          <div style={{ fontSize: '9px', color: '#aaa' }}>RISCO MÉDIO</div>
+          <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#ffb703' }}>{avgThreatLevel}%</div>
+        </div>
+      </div>
 
       <div style={styles.card}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
@@ -242,7 +291,10 @@ export default function MachineDashboard() {
       </div>
 
       <div style={styles.card}>
-        <div style={{ fontSize: '11px', fontWeight: 'bold', marginBottom: '8px' }}>4. TERMINAL DE COMANDOS & LOGS</div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+          <div style={{ fontSize: '11px', fontWeight: 'bold' }}>4. TERMINAL DE COMANDOS & LOGS</div>
+          <button onClick={exportLogs} style={{ fontSize: '9px', background: '#ffb703', color: '#07090d', border: 'none', padding: '2px 6px', borderRadius: '3px', fontWeight: 'bold', cursor: 'pointer' }}>💾 EXPORTAR LOGS</button>
+        </div>
         <form onSubmit={handleCommandSubmit} style={{ marginBottom: '8px' }}>
           <input type="text" placeholder="Digite comando (/scan, /lock, /purge)..." value={commandInput} onChange={e => setCommandInput(e.target.value)} style={{ ...styles.input, marginBottom: '4px' }} />
         </form>
