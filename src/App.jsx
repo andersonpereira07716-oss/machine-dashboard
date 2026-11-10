@@ -1,3 +1,11 @@
+
+  // BYPASS OMNI-AUTH LOCAL (Forçado para ambiente de campo)
+  const handleBypassLogin = (e) => {
+    if (e) e.preventDefault();
+    localStorage.setItem('omni_auth_session', 'true');
+    window.location.reload();
+  };
+
 import { dispararAlertaTelegramTatico } from './services/telegramService';
 import React, { useState, useEffect } from 'react';
 import { supabase } from './supabaseClient';
